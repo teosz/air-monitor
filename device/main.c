@@ -8,32 +8,48 @@
 #include <avr/interrupt.h>
 #include <util/delay.h>
 #include <stdlib.h>
-#include "lcd.h"
 #include "wifi.h"
 #include "utils.h"
 
-/* time elapsed after the previous server communication */
-static int wifi_send_timer;
-
+static int quality = 0;
 /* WiFi communication buffer */
 static char _buffer[150];
 
 /* WiFi connection status */
 static uint8_t Connect_Status;
 
+
 int main(void)
 {
-    /* initialize devices */
-    USART_Init(115200)
-    esp_connect();
+    /* enable global interrupts */
+    sei();
 
-    /* main loop */
+    /* initialize devices */
+    USART_Init(115200);
+    esp_connect();
+		DDRD |= (1 << PD7);
+		DDRD |= (1 << PD6);
+		DDRA |= (0 << PA6);
+		ADMUX = 0;
+		ADMUX |= (0 << MUX0);
+		ADMUX |= (1 << REFS0);
+		ADCSRA = 0;
+		ADCSRA |= (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
+		ADCSRA |= (1 << ADEN);
     while(1) {
+				PORTD |= (1 << PD7);
+				_delay_ms(280);
+				PORTD |= (1 << PD6);
+				ADCSRA |= (1 << ADSC);         //start conversion
+				loop_until_bit_is_set(ADCSRA, ADIF);  //wait until conversion is done: until ADIF from ADCSRA is set to 1
+				// int Vo = ADC;
+				// quality = Vo / 1024.0 * 5.0;
+				quality = ADC;
+				PORTD &= (0 << PD6);
+				PORTD &= (0 << PD7);
 				esp_send();
-        _delay_ms(500);
     }
 }
-
 
 /* connect to ESP module and open TCP connection with the server */
 void esp_connect()
@@ -60,7 +76,7 @@ void esp_send()
     ESP8266_Start(0, DOMAIN, PORT);
 
     memset(_buffer, 0, 150);
-    sprintf(_buffer, "GET /update?api_key=%s&field1=%d", API_WRITE_KEY, min_distance);
+    sprintf(_buffer, "GET /update?value=%d HTTP/1.0\r\n\r\n", quality);
     ESP8266_Send(_buffer);
 
 }

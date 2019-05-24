@@ -1,0 +1,180 @@
+extends ../layout
+
+block content
+	.columns(style="margin-left: 1%;  width: 98%; position: flex")
+		.column.is-2.is-sidebar-menu.is-hidden-mobile
+			aside.menu
+				p.menu-label
+					| General
+				ul.menu-list
+					li
+						a(href="/dashboard").is-active Dashboard
+					li
+						a My account
+		.column.is-main-content(style="width:100%")
+
+			nav.level
+				.level-item.has-text-centered
+					div
+						p.heading Last value
+						span.title#lastValue -
+						span &#181;g/m 
+							sup 3
+				.level-item.has-text-centered
+					div
+						p.heading Last value from
+						p.title#lastDate -
+				.level-item.has-text-centered
+					div
+						p.heading Total data acquired
+						p.title#count - 
+				.level-item.has-text-centered
+			.columns
+				.column
+					div(style='position:flex; width:99%;')
+						.notification.is-danger.alert.hidden
+							button.delete
+							|   Abnormal level of dust in the air. Please consider
+							| airing the room properly.
+			.columns
+				.column.is-half
+					div(style='position:flex; width:100%;')
+						canvas#myChart
+				.column.is-half
+					div(style='position:flex; width:100%;')
+						canvas#myChart2
+
+
+	script.
+		var	chartData	=	{
+		labels:	["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", ],
+		datasets:	[{
+						type:	'line',
+						label:	'Value',
+						borderColor:	'rgba(255,99,132,1)',
+						borderWidth:	2,
+						fill:	false,
+						data:	[]
+		},	{
+						type:	'bar',
+						label:	'Average',
+						backgroundColor:	'rgba(255, 159, 64, 1)',
+						data:	[],
+						borderColor:	'white',
+						borderWidth:	2
+		},	{
+						type:	'bar',
+						label:	'Value',
+						backgroundColor:	'rgba(255, 206, 86, 1)',
+						data:	[]
+		}]
+
+		};
+		function setIntervalAndExecute(fn, t) {
+			fn();
+			return(setInterval(fn, t));
+		}
+		window.onload	=	function()	{			
+			$.get( "/days", function(data) {
+				days = [...Array(8).keys()];
+				days.shift();
+				avgs = days.map(i => data[0][`avg${i}`]);
+				for(i in avgs) {
+					if(avgs[i].length == 0) {
+						avgs[i] = 0;
+					} else {
+						avgs[i] = avgs[i][0].avg;
+					}
+				}
+				avgds = days.map(i => data[0][`all${i}`]);
+				for(i in avgds) {
+					if(avgds[i].length == 0) {
+						avgds[i] = 0;
+					} else {
+						avgds[i] = avgds[i][0].avg;
+					}
+				}
+				chartData.datasets[0].data = avgs;
+				chartData.datasets[1].data = avgds;
+				chartData.datasets[2].data = avgs;
+			
+				var	ctx	=	document.getElementById("myChart").getContext("2d");
+				window.myMixedChart	=	new	Chart(ctx,	{
+								type:	'bar',
+								data:	chartData,
+								options:	{
+												responsive:	true,
+												title:	{
+																display:	true,
+																text:	'Last values this week'
+												},
+												tooltips:	{
+																mode:	'index',
+																intersect:	true
+												}
+								}
+				});
+			});
+			setIntervalAndExecute(function() {
+				$.get("/info", function(data) {
+					value = data.lastValue.toFixed(3)
+					document.getElementById("lastValue").innerHTML = data.lastValue.toFixed(3);
+					debugger
+					if(value > 20) {
+						$('.alert').removeClass("hiden");
+						$('.alert').slideDown();
+					} else {
+						$('.alert').hide();
+					}
+					document.getElementById("lastDate").innerHTML = Date(data.date).replace(" GMT+0300 (Eastern European Summer Time)", "");
+					document.getElementById("count").innerHTML = data.count;
+				});
+			}, 2000);
+			$.get("/months", function(data) {
+				d = {};
+				for(x of Object.values(data)) {
+					d[x._id.month] = x.avg;	
+				}
+				values = [...Array(13).keys()];
+				values.shift();
+				values = values.map(i => d[i] || 0);
+				var ctx = document.getElementById("myChart2");
+				var myChart2 = new Chart(ctx, {
+						type: 'bar',
+						data: {
+								labels:["January",	"February",	"March",	"April",	"May",	"June",	"July"],
+								datasets: [{
+										label: 'Value by month',
+										data: values,
+										backgroundColor: [
+												'rgba(255, 99, 132, 1)',
+												'rgba(54, 162, 235, 1)',
+												'rgba(255, 206, 86, 1)',
+												'rgba(75, 192, 192, 1)',
+												'rgba(153, 102, 255, 1)',
+												'rgba(255, 159, 64, 1)'
+										],
+										borderColor: [
+												'rgba(255,99,132,1)',
+												'rgba(54, 162, 235, 1)',
+												'rgba(255, 206, 86, 1)',
+												'rgba(75, 192, 192, 1)',
+												'rgba(153, 102, 255, 1)',
+												'rgba(255, 159, 64, 1)'
+										],
+										borderWidth: 1
+								}]
+						},
+						options: {
+								scales: {
+										yAxes: [{
+												ticks: {
+														beginAtZero:true
+												}
+										}]
+								}
+						}
+				});
+			})
+		};
+		

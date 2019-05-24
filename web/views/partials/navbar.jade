@@ -1,0 +1,35 @@
+nav.navbar.is-transparent
+			.navbar-brand
+				a.navbar-item(href='/dashboard')
+				.navbar-burger.burger(data-target='navbarExampleTransparentExample')
+					span 
+					span
+					span
+			#navbarExampleTransparentExample.navbar-menu
+				if !isLogged					
+					.navbar-start
+						a.navbar-item(href='/')
+							| Home
+				.navbar-end
+					.navbar-item
+						.field.is-grouped
+							if !isLogged
+								p.control
+									a.bd-tw-button.button(href="/login")
+										span.icon
+											i.fas.fa-bookmark
+										span
+											| Login
+								p.control
+									a.button.is-primary(href='/register')
+										span.icon
+											i.far.fa-newspaper
+										span Register
+							else
+								p.control
+									p 
+									a.button.is-danger(href='/logout')
+										span.icon
+											i.fas.fa-exclamation
+										span Logout
+br
